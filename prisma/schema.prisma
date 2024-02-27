@@ -1,0 +1,208 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Status {
+  ACTIVE
+  NONACTIVE
+}
+
+enum Role {
+  AUTHOR
+  ADMIN
+  SUPERADMIN
+}
+
+model User {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  password        String?
+  status          Status    @default(ACTIVE)
+  role            Role      @default(AUTHOR)
+  profile_picture Int?
+  emailVerified   DateTime? @map("email_verified")
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  post            Post[]
+  media           Media[]
+  accounts        Account[]
+  sessions        Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+enum PostStatus {
+  DRAFT
+  PENDING
+  REVIEWED
+  REJECTED
+  APPROVED
+}
+
+model Post {
+  id         String     @id @default(uuid())
+  author_id  String
+  title      String
+  content    String     @db.LongText
+  slug       String
+  thumbnail  Int
+  status     PostStatus @default(PENDING)
+  viewed     Int        @default(0)
+  menu_id    Int
+  submenu_id String?
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  author     User       @relation(fields: [author_id], references: [id])
+  media      Media      @relation(fields: [thumbnail], references: [id])
+  menu       Menu       @relation(fields: [menu_id], references: [id])
+
+  @@map("posts")
+}
+
+model Menu {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique
+  url          String?   @unique
+  external_url String?
+  description  String?
+  banner       Int
+  layout       String?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  submenu      Submenu[]
+  post         Post[]
+  media        Media     @relation(fields: [banner], references: [id])
+
+  @@map("menu")
+}
+
+model Submenu {
+  id           Int      @id @default(autoincrement())
+  menu_id      Int
+  name         String   @unique
+  url          String   @unique
+  external_url String?
+  description  String?
+  banner       Int?
+  layout       String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  menu         Menu     @relation(fields: [menu_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  media        Media?   @relation(fields: [banner], references: [id])
+
+  @@map("submenu")
+}
+
+model Slider {
+  id         Int      @id @default(autoincrement())
+  title      String
+  caption    String   @db.VarChar(255)
+  image      Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  media      Media    @relation(fields: [image], references: [id])
+
+  @@map("sliders")
+}
+
+model Homesetting {
+  id         Int      @id @default(autoincrement())
+  embed      String   @db.Text
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("home_setting")
+}
+
+model Media {
+  id            Int       @id @default(autoincrement())
+  path          String
+  original_name String
+  user_id       String
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  user          User      @relation(fields: [user_id], references: [id])
+  Slider        Slider[]
+  Post          Post[]
+  Menu          Menu[]
+  Submenu       Submenu[]
+  Team          Team[]
+  About         About[]
+
+  @@map("media")
+}
+
+model Team {
+  id         Int      @id @default(autoincrement())
+  name       String
+  about      String   @db.VarChar(255)
+  photo      Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  media      Media    @relation(fields: [photo], references: [id])
+
+  @@map("teams")
+}
+
+model About {
+  id          Int      @id @default(autoincrement())
+  title       String
+  image       Int
+  description String   @db.Text()
+  about_us    String   @db.LongText()
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  media       Media    @relation(fields: [image], references: [id])
+
+  @@map("about")
+}
+
+model Setting {
+  id         Int       @id @default(autoincrement())
+  type       String    @unique
+  value      String?   @db.LongText
+  created_at DateTime? @default(now())
+  updated_at DateTime? @updatedAt
+
+  @@map("setting")
+}
